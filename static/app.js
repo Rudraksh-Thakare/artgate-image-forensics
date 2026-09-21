@@ -337,8 +337,19 @@ async function executeAnalysis() {
     }
 
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || "Inference failed on server.");
+      let errMsg = `Server returned HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const err = await response.json();
+        errMsg = err.error || errMsg;
+      } catch (_) {
+        const text = await response.text();
+        if (text && text.length < 300) {
+          errMsg = text;
+        } else {
+          errMsg = `Server Error (${response.status}). The server may be processing or restarting.`;
+        }
+      }
+      throw new Error(errMsg);
     }
 
     const data = await response.json();

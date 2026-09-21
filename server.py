@@ -200,6 +200,8 @@ def detect():
 
         width, height = img.size
 
+        detector = get_model()
+
         # -------------------------------------------------------------
         # 1. PHYSICAL SENSOR NOISE & CAMERA FINGERPRINT ANALYSIS
         # -------------------------------------------------------------
@@ -217,7 +219,6 @@ def detect():
             tensor = input_transform(img).unsqueeze(0).to(device)
 
         # Feature representation & dynamic cross-branch gating
-        detector = get_model()
         with torch.no_grad():
             branch_feats = detector.extract_all_branch_features(tensor)
             logits, gates = detector(tensor, return_gates=True)
