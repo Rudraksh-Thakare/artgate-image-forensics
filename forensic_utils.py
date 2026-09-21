@@ -84,24 +84,38 @@ def _get_face_svm():
     return _FACE_SVM_MODEL if _FACE_SVM_MODEL is not False else None
 
 
+def set_shared_model(fusion_model):
+    """Shares the existing ResNet101 backbone from the fusion detector to avoid duplicate RAM allocation."""
+    global _RESNET_FE, _RESNET_TRANSFORM
+    if fusion_model is not None and hasattr(fusion_model, "fingerprint_branch"):
+        _RESNET_FE = fusion_model.fingerprint_branch
+        from torchvision import transforms
+        _RESNET_TRANSFORM = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+
 def _get_resnet_fe():
     global _RESNET_FE, _RESNET_TRANSFORM
-    if _RESNET_FE is None:
-        try:
-            import torch
-            from torchvision import models, transforms
-            resnet = models.resnet101(weights=models.ResNet101_Weights.DEFAULT)
-            modules = list(resnet.children())[:-1]
-            _RESNET_FE = torch.nn.Sequential(*modules)
-            _RESNET_FE.eval()
-            _RESNET_TRANSFORM = transforms.Compose([
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ])
-        except Exception as e:
-            print(f"[!] Warning: Failed to load ResNet101 FE: {e}")
-            _RESNET_FE = False
+    if _RESNET_FE is not None:
+        return (_RESNET_FE, _RESNET_TRANSFORM)
+    try:
+        import torch
+        from torchvision import models, transforms
+        resnet = models.resnet101(weights=models.ResNet101_Weights.DEFAULT)
+        modules = list(resnet.children())[:-1]
+        _RESNET_FE = torch.nn.Sequential(*modules)
+        _RESNET_FE.eval()
+        _RESNET_TRANSFORM = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+    except Exception as e:
+        print(f"[!] Warning: Failed to load ResNet101 FE: {e}")
+        _RESNET_FE = False
     return (_RESNET_FE, _RESNET_TRANSFORM) if _RESNET_FE is not False else (None, None)
 
 

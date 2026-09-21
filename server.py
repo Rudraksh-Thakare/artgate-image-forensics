@@ -24,7 +24,8 @@ from forensic_utils import (
     generate_wavelet_subbands,
     generate_fft_spectrum,
     analyze_sensor_noise_and_features,
-    generate_gradcam_overlay
+    generate_gradcam_overlay,
+    set_shared_model
 )
 
 
@@ -33,6 +34,9 @@ from forensic_utils import (
 # ---------------------------------------------------------------------
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
+
+# Restrict PyTorch thread pool to reduce memory overhead in containerized environments
+torch.set_num_threads(1)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"[*] Starting Universal AI Detection Server on device: {device}")
@@ -45,6 +49,7 @@ print(f"[*] Initializing ResNet101 Camera Fingerprint & Fusion Engine (Custom We
 model = ArtGateFusionDetector(camera_checkpoint=CAMERA_CHECKPOINT)
 model.to(device)
 model.eval()
+set_shared_model(model)
 print(f"[+] Universal Forensic & Fingerprinting Engine ready (Face SVM: {FACE_SVM_CHECKPOINT}).")
 
 # Standard input transform
