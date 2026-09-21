@@ -45,12 +45,19 @@ print(f"[*] Starting Universal AI Detection Server on device: {device}")
 CAMERA_CHECKPOINT = "camera_resnet101.pth" if os.path.exists("camera_resnet101.pth") else None
 FACE_SVM_CHECKPOINT = "models/face_detector_svm.joblib" if os.path.exists("models/face_detector_svm.joblib") else None
 
-print(f"[*] Initializing ResNet101 Camera Fingerprint & Fusion Engine (Custom Weights: {CAMERA_CHECKPOINT})...")
-model = ArtGateFusionDetector(camera_checkpoint=CAMERA_CHECKPOINT)
-model.to(device)
-model.eval()
-set_shared_model(model)
-print(f"[+] Universal Forensic & Fingerprinting Engine ready (Face SVM: {FACE_SVM_CHECKPOINT}).")
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        print(f"[*] Initializing ResNet101 Camera Fingerprint & Fusion Engine (Custom Weights: {CAMERA_CHECKPOINT})...")
+        model = ArtGateFusionDetector(camera_checkpoint=CAMERA_CHECKPOINT)
+        model.to(device)
+        model.eval()
+        set_shared_model(model)
+        print(f"[+] Universal Forensic & Fingerprinting Engine ready (Face SVM: {FACE_SVM_CHECKPOINT}).")
+    return model
+
 
 # Standard input transform
 input_transform = transforms.Compose([
@@ -210,9 +217,10 @@ def detect():
             tensor = input_transform(img).unsqueeze(0).to(device)
 
         # Feature representation & dynamic cross-branch gating
+        detector = get_model()
         with torch.no_grad():
-            branch_feats = model.extract_all_branch_features(tensor)
-            logits, gates = model(tensor, return_gates=True)
+            branch_feats = detector.extract_all_branch_features(tensor)
+            logits, gates = detector(tensor, return_gates=True)
             gate_vals = gates.squeeze(0).cpu().numpy()
 
         gating_weights = {
@@ -222,7 +230,7 @@ def detect():
         }
 
         # Grad-CAM Visual Attention Map (Layer4 of ResNet101)
-        gradcam_map = model.generate_gradcam(tensor)
+        gradcam_map = detector.generate_gradcam(tensor)
         gradcam_overlay_b64 = generate_gradcam_overlay(input_img, gradcam_map, alpha=0.55)
 
         # -------------------------------------------------------------
