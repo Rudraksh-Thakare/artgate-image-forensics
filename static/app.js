@@ -336,23 +336,26 @@ async function executeAnalysis() {
       });
     }
 
+    const rawText = await response.text();
+
+    let data = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch (_) {
+      data = null;
+    }
+
     if (!response.ok) {
-      let errMsg = `Server returned HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const err = await response.json();
-        errMsg = err.error || errMsg;
-      } catch (_) {
-        const text = await response.text();
-        if (text && text.length < 300) {
-          errMsg = text;
-        } else {
-          errMsg = `Server Error (${response.status}). The server may be processing or restarting.`;
-        }
-      }
+      const errMsg = (data && data.error)
+        ? data.error
+        : `Server Error (${response.status}: ${response.statusText || "Internal Error"}). The server may be busy or reloading.`;
       throw new Error(errMsg);
     }
 
-    const data = await response.json();
+    if (!data) {
+      throw new Error("Invalid response format received from server.");
+    }
+
     state.lastAnalysisResult = data;
     renderDiagnosticReport(data);
 

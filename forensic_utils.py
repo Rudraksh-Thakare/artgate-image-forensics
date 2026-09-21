@@ -146,6 +146,12 @@ def analyze_sensor_noise_and_features(image: Image.Image, is_camera: bool = Fals
     import torch
     import torch.nn.functional as F
 
+    # Cap maximum dimension to 1280px to protect memory in low-RAM container environments (e.g. Render 512MB)
+    if max(image.width, image.height) > 1280:
+        scale = 1280.0 / max(image.width, image.height)
+        new_w, new_h = max(int(image.width * scale), 1), max(int(image.height * scale), 1)
+        image = image.resize((new_w, new_h), Image.Resampling.BILINEAR)
+
     arr = np.array(image.convert("RGB"))
     h, w, _ = arr.shape
     gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY).astype(np.float32)
