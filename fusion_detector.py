@@ -250,12 +250,18 @@ class CLIPViTBranch(nn.Module):
             nn.GELU()
         )
         try:
-            from transformers import CLIPVisionModel
-            self.model = CLIPVisionModel.from_pretrained(model_name)
-            if freeze:
+            from forensic_utils import _get_clip
+            clip_model, _ = _get_clip()
+            if clip_model is not None and hasattr(clip_model, "vision_model"):
+                self.model = clip_model.vision_model
+            else:
+                from transformers import CLIPVisionModel
+                self.model = CLIPVisionModel.from_pretrained(model_name)
+            if freeze and self.model is not None:
                 for p in self.model.parameters():
                     p.requires_grad = False
-        except Exception:
+        except Exception as e:
+            print(f"[!] Warning initializing CLIPViTBranch: {e}")
             self.model = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

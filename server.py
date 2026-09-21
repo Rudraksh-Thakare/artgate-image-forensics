@@ -59,6 +59,21 @@ def get_model():
     return model
 
 
+# Background warmup: lets the server bind the port immediately, then warms up models
+import threading
+
+def _background_warmup():
+    time.sleep(2.0)
+    print("[*] Background pre-warming inference models...")
+    try:
+        get_model()
+        print("[+] Background warmup completed. Ready for instant inference!")
+    except Exception as e:
+        print(f"[!] Warmup info: {e}")
+
+threading.Thread(target=_background_warmup, daemon=True).start()
+
+
 # Standard input transform
 input_transform = transforms.Compose([
     transforms.Resize((224, 224)),
