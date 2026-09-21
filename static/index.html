@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArtGate Forensic Verifier | Image Authenticity & Artifact Analysis</title>
+  <meta name="description" content="Digital image forensics laboratory instrument for detecting synthetic and AI-generated image artifacts using spatial, frequency-domain, and vision-language fusion.">
+  
+  <!-- Fonts: System Sans + JetBrains Mono for telemetry -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top System Bar -->
+  <header class="sys-header">
+    <div class="sys-branding">
+      <span class="sys-app-name">ARTGATE FORENSIC VERIFIER</span>
+      <span class="sys-tag">v1.2.0</span>
+      <span class="sys-divider">|</span>
+      <span class="sys-arch">TRIPLE-BRANCH ENGINE (MOBILENETV2 + DWT + CLIP-VIT)</span>
+    </div>
+
+    <div class="sys-status-bar">
+      <div id="statusBadge" class="status-indicator">
+        <span class="indicator-pip"></span>
+        <span id="statusText">INITIALIZING ENGINE...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Forensic Workstation Grid -->
+  <main class="workbench-container">
+
+    <!-- TOP SECTION: TWO-COLUMN INSPECTION BAY -->
+    <div class="bay-split">
+      
+      <!-- LEFT COLUMN: PRIMARY EVIDENCE VIEWPORT -->
+      <section class="panel evidence-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <span class="panel-title">Evidence Viewport</span>
+            <span class="panel-meta" id="viewportStatusText">Awaiting input source</span>
+          </div>
+          <div class="tool-tabs" role="tablist">
+            <button class="tool-tab active" id="tabUpload" role="tab" aria-selected="true">File Import</button>
+            <button class="tool-tab" id="tabCamera" role="tab" aria-selected="false">Hardware Stream</button>
+          </div>
+        </div>
+
+        <div class="evidence-stage-wrapper">
+          
+          <!-- VIEW 1: FILE DROPZONE & STAGE -->
+          <div id="viewUpload" class="stage-view active">
+            <div class="stage-dropzone" id="dropzone">
+              <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/bmp" class="file-input-hidden">
+              
+              <!-- Empty State -->
+              <div id="dropzoneEmpty" class="stage-empty">
+                <div class="stage-crosshair-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <line x1="12" y1="2" x2="12" y2="6"></line>
+                    <line x1="12" y1="18" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="6" y2="12"></line>
+                    <line x1="18" y1="12" x2="22" y2="12"></line>
+                    <circle cx="12" cy="12" r="7"></circle>
+                  </svg>
+                </div>
+                <div class="stage-primary-msg">Select or drop target image for authenticity evaluation</div>
+                <div class="stage-sub-msg">Supported formats: JPEG, PNG, WebP (Direct matrix decoding)</div>
+              </div>
+
+              <!-- Loaded Image Preview -->
+              <div id="dropzonePreview" class="stage-preview" style="display:none;">
+                <div class="stage-image-mount">
+                  <img id="previewImage" alt="Evidence specimen">
+                  <div class="stage-ruler top"></div>
+                  <div class="stage-ruler left"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW 2: LIVE HARDWARE CAMERA STREAM -->
+          <div id="viewCamera" class="stage-view">
+            <div class="hardware-video-mount">
+              <video id="cameraVideo" playsinline autoplay muted></video>
+              <canvas id="cameraCanvas" style="display:none;"></canvas>
+              
+              <div class="video-overlay-grid">
+                <div class="grid-line horizontal"></div>
+                <div class="grid-line vertical"></div>
+                <div class="optical-marker tl">+</div>
+                <div class="optical-marker tr">+</div>
+                <div class="optical-marker bl">+</div>
+                <div class="optical-marker br">+</div>
+                <div class="stream-data-bar">
+                  <span>STREAM: ACTIVE</span>
+                  <span id="cameraResolution">0 x 0</span>
+                </div>
+              </div>
+
+              <!-- Freeze frame snapshot overlay -->
+              <div id="cameraSnapshotPreview" class="video-snapshot-mount" style="display:none;">
+                <img id="capturedFrameImg" alt="Optical capture snapshot">
+                <div class="snapshot-label">BUFFERED FRAME</div>
+              </div>
+            </div>
+
+            <div class="stream-control-row">
+              <button class="sys-btn" id="btnSwitchCamera">Switch Lens</button>
+              <button class="sys-btn primary" id="btnCaptureAnalyze">Capture & Analyze</button>
+              <button class="sys-btn" id="btnRetakeCamera" style="display:none;">Clear Frame</button>
+            </div>
+          </div>
+
+          <!-- Stage Telemetry Footer -->
+          <div class="stage-telemetry">
+            <div class="telemetry-cell">
+              <span class="cell-label">Filename:</span>
+              <span class="cell-value" id="previewFilename">No file loaded</span>
+            </div>
+            <div class="telemetry-cell">
+              <span class="cell-label">Dimensions:</span>
+              <span class="cell-value" id="previewMetaDimensions">--</span>
+            </div>
+            <div class="telemetry-cell">
+              <span class="cell-label">Filesize:</span>
+              <span class="cell-value" id="previewMetaSize">--</span>
+            </div>
+            <div class="telemetry-cell right">
+              <button class="text-action-btn" id="btnRemoveFile" style="display:none;">Clear Evidence</button>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN: DIAGNOSTIC REPORT & CONTROLS -->
+      <section class="panel diagnostic-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <span class="panel-title">Diagnostic Summary</span>
+            <span class="panel-meta">Multimodal Fusion Inference</span>
+          </div>
+        </div>
+
+        <div class="diagnostic-body">
+          
+          <!-- Primary Action Control -->
+          <div class="scan-action-block">
+            <button class="sys-btn run-scan-btn" id="btnAnalyze">
+              <span id="analyzeBtnLabel">Execute Diagnostic Scan</span>
+            </button>
+            <div class="analysis-progress-bar" id="analysisProgress" style="display:none;">
+              <div class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Verdict Status Box -->
+          <div class="verdict-box idle" id="verdictCard">
+            <div class="verdict-header-row">
+              <span class="verdict-label" id="verdictTag">DIAGNOSTIC STATUS</span>
+              <span class="verdict-timestamp" id="metaTimestamp">--:--:--</span>
+            </div>
+            <div class="verdict-headline" id="verdictTitle">Ready for Analysis</div>
+            <div class="verdict-technical-summary" id="verdictDesc">Load an image specimen or optical camera stream to execute multimodal signal evaluation.</div>
+          </div>
+
+          <!-- Primary Metric Readouts -->
+          <div class="metric-data-table">
+            <div class="data-row">
+              <span class="data-key">Confidence Score:</span>
+              <span class="data-val bold" id="verdictConfidence">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Authentic Photo Probability:</span>
+              <span class="data-val" id="probRealVal">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Synthetic / AI Probability:</span>
+              <span class="data-val" id="probAiVal">--</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Inference Latency:</span>
+              <span class="data-val" id="metaLatency">-- ms</span>
+            </div>
+            <div class="data-row">
+              <span class="data-key">Compute Architecture:</span>
+              <span class="data-val" id="metaDevice">--</span>
+            </div>
+          </div>
+
+          <!-- Gating Distribution Table -->
+          <div class="gating-table-wrapper">
+            <div class="table-caption">Adaptive Branch Gating Weights</div>
+            <table class="gating-table">
+              <thead>
+                <tr>
+                  <th>Signal Channel</th>
+                  <th>Tensor Vector</th>
+                  <th>Gating Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Camera Fingerprint (ResNet101)</td>
+                  <td class="mono">2048-d</td>
+                  <td class="mono bold" id="gatingSpatial">--</td>
+                </tr>
+                <tr>
+                  <td>Wavelet Frequency (DWT)</td>
+                  <td class="mono">256-d</td>
+                  <td class="mono bold" id="gatingWavelet">--</td>
+                </tr>
+                <tr>
+                  <td>CLIP Vision-Language</td>
+                  <td class="mono">512-d</td>
+                  <td class="mono bold" id="gatingClip">--</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Report Export Actions -->
+          <div class="report-actions">
+            <button class="sys-btn secondary" onclick="window.print()">Export Printable Dossier</button>
+            <button class="sys-btn secondary" id="btnExportJson">Export Raw Telemetry</button>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+
+    <!-- BOTTOM SECTION: SIGNAL CHANNELS & FREQUENCY INSPECTION -->
+    <section class="panel signal-channels-panel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <span class="panel-title">Signal Decomposition, Forensic Heatmaps & Frequency Inspection</span>
+          <span class="panel-meta">Grad-CAM (ResNet-101 Layer4), 2D Wavelet DWT Subbands & 2D FFT Power Spectrum</span>
+        </div>
+      </div>
+
+      <div class="channels-content">
+        
+        <!-- Wavelet Subbands Grid & Grad-CAM -->
+        <div class="subband-strip">
+          
+          <!-- Grad-CAM Neural Attention Heatmap -->
+          <div class="subband-card gradcam-card" onclick="openInspectorModal('Grad-CAM Attention Heatmap', 'Gradient-weighted class activation map (ResNet101 layer4) localizing anomalous synthetic artifacts vs authentic physical structures', this.querySelector('img').src)">
+            <div class="subband-card-header">
+              <span class="channel-code" style="color: #ff4757; background: rgba(255, 71, 87, 0.15);">CAM</span>
+              <span class="channel-name">Grad-CAM Heatmap</span>
+            </div>
+            <div class="subband-img-mount">
+              <img id="imgGradCAM" alt="Grad-CAM Attention Heatmap">
+            </div>
+            <div class="subband-stat-row">
+              <span>Backbone:</span>
+              <span class="mono" id="gradcamLayer">ResNet-101 (L4)</span>
+            </div>
+          </div>
+
+          <!-- LL Approx -->
+          <div class="subband-card" onclick="openInspectorModal('LL Subband (Approximation)', 'Low-frequency structural baseline component', this.querySelector('img').src)">
+            <div class="subband-card-header">
+              <span class="channel-code">LL</span>
+              <span class="channel-name">Approximation</span>
+            </div>
+            <div class="subband-img-mount">
+              <img id="imgSubbandLL" alt="LL Subband">
+            </div>
+            <div class="subband-stat-row">
+              <span>Energy:</span>
+              <span class="mono" id="energyLL">--</span>
+            </div>
+          </div>
+
+          <!-- LH Horiz -->
+          <div class="subband-card" onclick="openInspectorModal('LH Subband (Horizontal Detail)', 'Horizontal high-frequency edge and gradient anomalies', this.querySelector('img').src)">
+            <div class="subband-card-header">
+              <span class="channel-code">LH</span>
+              <span class="channel-name">Horizontal Detail</span>
+            </div>
+            <div class="subband-img-mount">
+              <img id="imgSubbandLH" alt="LH Subband">
+            </div>
+            <div class="subband-stat-row">
+              <span>Energy:</span>
+              <span class="mono" id="energyLH">--</span>
+            </div>
+          </div>
+
+          <!-- HL Vert -->
+          <div class="subband-card" onclick="openInspectorModal('HL Subband (Vertical Detail)', 'Vertical high-frequency edge and gradient anomalies', this.querySelector('img').src)">
+            <div class="subband-card-header">
+              <span class="channel-code">HL</span>
+              <span class="channel-name">Vertical Detail</span>
+            </div>
+            <div class="subband-img-mount">
+              <img id="imgSubbandHL" alt="HL Subband">
+            </div>
+            <div class="subband-stat-row">
+              <span>Energy:</span>
+              <span class="mono" id="energyHL">--</span>
+            </div>
+          </div>
+
+          <!-- HH Diag -->
+          <div class="subband-card" onclick="openInspectorModal('HH Subband (Diagonal Noise)', 'Diagonal high-frequency noise and upsampling checkerboard artifacts', this.querySelector('img').src)">
+            <div class="subband-card-header">
+              <span class="channel-code">HH</span>
+              <span class="channel-name">Diagonal Noise</span>
+            </div>
+            <div class="subband-img-mount">
+              <img id="imgSubbandHH" alt="HH Subband">
+            </div>
+            <div class="subband-stat-row">
+              <span>Energy:</span>
+              <span class="mono" id="energyHH">--</span>
+            </div>
+          </div>
+
+          <!-- 2D FFT Spectrum -->
+          <div class="subband-card fft-card" onclick="openInspectorModal('2D FFT Centered Log-Magnitude Spectrum', 'Spectral distribution showing unnatural grid spikes and high-frequency attenuation', this.querySelector('img').src)">
+            <div class="subband-card-header">
+              <span class="channel-code">FFT</span>
+              <span class="channel-name">Power Spectrum</span>
+            </div>
+            <div class="subband-img-mount">
+              <img id="imgFFTSpectrum" alt="2D FFT Spectrum">
+            </div>
+            <div class="subband-stat-row">
+              <span>HF Energy Ratio:</span>
+              <span class="mono" id="highFreqRatio">--</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- LOG / SESSION AUDIT TRAIL -->
+    <section class="panel audit-panel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <span class="panel-title">Session Audit Trail</span>
+          <span class="panel-meta">Chronological record of processed evidentiary specimens</span>
+        </div>
+        <button class="text-action-btn" id="btnClearHistory">Clear Log</button>
+      </div>
+      <div class="audit-table-wrapper">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Specimen</th>
+              <th>Dimensions</th>
+              <th>Diagnostic Status</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <tr>
+              <td colspan="5" class="empty-cell">No evidentiary scans recorded in this session.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: DETAILED SUBBAND INSPECTION -->
+  <div id="inspectorModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <span class="modal-title" id="modalTitle">Subband Inspection</span>
+          <span class="modal-sub" id="modalDesc">Detailed signal visualization</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeInspectorModal()">[ESC] Close</button>
+      </div>
+      <div class="modal-canvas-frame">
+        <img id="modalImg" alt="Inspector zoomed specimen">
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Minimal System Footer -->
+  <footer class="sys-footer">
+    <span>ARTGATE FORENSIC VERIFIER &bull; EVAN-RESEARCH &bull; LABORATORY INSTRUMENTATION BUILD</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
